@@ -1,4 +1,4 @@
-# PR Files Filter
+# GitHub Advanced Viewer
 
 A Chrome extension (Manifest V3) that hides files on GitHub's pull request **Files changed** tab based on filename filters you control. It is meant for reviewing AI-generated PRs, where much of the diff is noise: by default it hides tests, snapshots, Storybook stories, lockfiles, and generated/build output (full list in `DEFAULT_PATTERNS` in `src/storage.js`; edit it in the popup).
 
@@ -23,7 +23,7 @@ After editing the source, click the reload icon on the extension's card in `chro
 **Banner** (on the Files changed tab, only when something is hidden):
 
 ```
-[≡]  3 files hidden by PR Files Filter      [Show]  [List ▾]
+[≡]  3 files hidden by GitHub Advanced Viewer      [Show]  [List ▾]
 ```
 
 - **Show** reveals the hidden files for this page view only (nothing is saved) and the button becomes **Hide again**. Revealed files get a dashed outline so you can tell them apart.
@@ -99,14 +99,14 @@ These selectors live in the `SELECTORS` object at the top of `src/content.js`. T
 If GitHub changes this markup, the extension logs a single warning on the files page:
 
 ```
-[PR Files Filter] No file containers matching "div.file[data-tagsearch-path]" were found on /…/files after 5s. …
+[GitHub Advanced Viewer] No file containers matching "div.file[data-tagsearch-path]" were found on /…/files after 5s. …
 ```
 
 ## Debugging
 
 - **Nothing is hidden / no banner**
-  1. Open DevTools on the PR tab and look for a `[PR Files Filter]` warning in the Console (selectors no longer match; see above).
-  2. In the console, switch the context dropdown (top-left of the Console, normally "top") to **PR Files Filter**, then run `PRFilesFilter.debug()`. It returns whether the script is active, the active patterns, the hidden files (with matched pattern and old path), and the current `SELECTORS`.
+  1. Open DevTools on the PR tab and look for a `[GitHub Advanced Viewer]` warning in the Console (selectors no longer match; see above).
+  2. In the console, switch the context dropdown (top-left of the Console, normally "top") to **GitHub Advanced Viewer**, then run `PRFilesFilter.debug()`. It returns whether the script is active, the active patterns, the hidden files (with matched pattern and old path), and the current `SELECTORS`.
   3. In the Elements panel, search for `data-pff-hidden`; its value is the pattern that matched.
 - **Popup / storage**: right-click the toolbar icon, **Inspect popup**. To look at stored data, run `chrome.storage.sync.get(null, console.log)` in that console.
 - **Service worker**: `chrome://extensions` → the extension card → **service worker** link.

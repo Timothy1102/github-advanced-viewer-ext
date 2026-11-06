@@ -1,5 +1,5 @@
 /*
- * PR Files Filter - content script (injected on https://github.com/*).
+ * GitHub Advanced Viewer - content script (injected on https://github.com/*).
  *
  * Load order (manifest): matcher.js, storage.js, content.js - they share
  * globalThis.PRFilesFilter.
@@ -9,7 +9,7 @@
  *   - hides the ones whose path matches an enabled filter by setting
  *     data-pff-hidden (CSS in content.css does `display: none !important`).
  *     GitHub's nodes are never removed.
- *   - shows a banner ("N files hidden by PR Files Filter") so reviewers always
+ *   - shows a banner ("N files hidden by GitHub Advanced Viewer") so reviewers always
  *     know files are hidden; "Show" reveals them for this page view only.
  *
  * Everywhere else on github.com it is idle: no MutationObserver, no work.
@@ -39,7 +39,7 @@
 (() => {
   'use strict';
 
-  const LOG = '[PR Files Filter]';
+  const LOG = '[GitHub Advanced Viewer]';
   const NS = globalThis.PRFilesFilter;
   if (!NS || !NS.matcher || !NS.storage) {
     console.warn(`${LOG} shared scripts did not load; doing nothing.`);
@@ -439,8 +439,8 @@
     const listId = `${BANNER_ID}-list`;
 
     const message = state.revealed
-      ? [h('strong', { text: `${n} ${noun}` }), ` matching your filters ${n === 1 ? 'is' : 'are'} shown (PR Files Filter)`]
-      : [h('strong', { text: `${n} ${noun}` }), ' hidden by PR Files Filter'];
+      ? [h('strong', { text: `${n} ${noun}` }), ` matching your filters ${n === 1 ? 'is' : 'are'} shown (GitHub Advanced Viewer)`]
+      : [h('strong', { text: `${n} ${noun}` }), ' hidden by GitHub Advanced Viewer'];
 
     const toggle = h('button', {
       type: 'button',
@@ -479,7 +479,7 @@
 
     const banner = h(
       'div',
-      { id: BANNER_ID, class: 'pff-banner', role: 'region', 'aria-label': 'PR Files Filter' },
+      { id: BANNER_ID, class: 'pff-banner', role: 'region', 'aria-label': 'GitHub Advanced Viewer' },
       h('div', { class: 'pff-row' }, buildIcon(), h('span', { class: 'pff-msg' }, ...message), toggle, details),
       list
     );

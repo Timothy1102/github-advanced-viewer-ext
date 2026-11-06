@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "PR Files Filter",
+  "name": "GitHub Advanced Viewer",
   "version": "0.1.0",
   "description": "Hide files like *.spec.ts and *.snap on GitHub's pull request Files changed tab. A banner always tells you what is hidden.",
   "minimum_chrome_version": "105",
@@ -17,7 +17,7 @@
     }
   ],
   "action": {
-    "default_title": "PR Files Filter",
+    "default_title": "GitHub Advanced Viewer",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

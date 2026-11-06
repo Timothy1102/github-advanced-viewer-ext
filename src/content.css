@@ -1,5 +1,5 @@
 /*
- * PR Files Filter - page styles (injected on https://github.com/*).
+ * GitHub Advanced Viewer - page styles (injected on https://github.com/*).
  *
  * Hiding is purely CSS-driven: content.js only sets data-pff-hidden /
  * data-pff-empty on GitHub's own nodes. "Show" sets data-pff-revealed on

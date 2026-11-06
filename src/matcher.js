@@ -1,5 +1,5 @@
 /*
- * PR Files Filter - gitignore-style glob matcher.
+ * GitHub Advanced Viewer - gitignore-style glob matcher.
  *
  * Works in three places without a build step:
  *   - content script / popup: listed as a classic <script>; attaches to

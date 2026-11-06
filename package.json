@@ -1,5 +1,5 @@
 {
-  "name": "pr-files-filter",
+  "name": "github-advanced-viewer",
   "version": "0.1.0",
   "private": true,
   "description": "Chrome extension that hides files on GitHub's PR Files changed tab by configurable filename filters. No build step, no dependencies.",

@@ -1,5 +1,5 @@
 /*
- * PR Files Filter - popup UI.
+ * GitHub Advanced Viewer - popup UI.
  *
  * Rules of this file:
  *   - Every write goes through storage.update(), which re-reads the latest

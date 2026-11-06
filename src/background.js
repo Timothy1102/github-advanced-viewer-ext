@@ -1,5 +1,5 @@
 /*
- * PR Files Filter - background service worker.
+ * GitHub Advanced Viewer - background service worker.
  *
  * Its only job: seed the default filters when the extension is first
  * installed. Reasons other than "install" (update, browser_update, ...) never
@@ -14,6 +14,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     // synced from another device), so a reinstall can't overwrite them.
     await globalThis.PRFilesFilter.storage.ensureSeeded();
   } catch (err) {
-    console.error('[PR Files Filter] Could not seed default filters:', err);
+    console.error('[GitHub Advanced Viewer] Could not seed default filters:', err);
   }
 });

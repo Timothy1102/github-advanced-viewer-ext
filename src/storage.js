@@ -1,5 +1,5 @@
 /*
- * PR Files Filter - settings schema, defaults and storage helpers.
+ * GitHub Advanced Viewer - settings schema, defaults and storage helpers.
  *
  * Schema (chrome.storage.sync, under STORAGE_KEY):
  *   { version: 1, enabled: boolean, filters: [{ id, pattern, enabled }] }
@@ -27,7 +27,7 @@
 })(typeof globalThis !== 'undefined' ? globalThis : self, function (matcher) {
   'use strict';
 
-  if (!matcher) throw new Error('[PR Files Filter] matcher.js must be loaded before storage.js');
+  if (!matcher) throw new Error('[GitHub Advanced Viewer] matcher.js must be loaded before storage.js');
 
   const SCHEMA_VERSION = 1;
   const STORAGE_KEY = 'settings';
