@@ -40,33 +40,41 @@
     return { additions: toInt(add[1]), deletions: toInt(del[1]) };
   }
 
-  /**
-   * Combine the PR total with the files the filters hide.
-   * `hiddenFiles` is a list of { stats: {additions, deletions} | null }.
-   * Returns { total, hidden, shown, unknownHidden } where `unknownHidden` counts
-   * hidden files whose line counts were unavailable (diff not loaded yet,
-   * binary file, ...): they are NOT part of `hidden`, so `shown` may be
-   * slightly overstated while that number is non-zero.
-   * `total` is null when unavailable; `shown` is then null too.
-   */
-  function summarize(total, hiddenFiles) {
-    const hidden = { additions: 0, deletions: 0 };
-    let unknownHidden = 0;
-    for (const f of hiddenFiles) {
+  const sum = (files) => {
+    const t = { additions: 0, deletions: 0 };
+    let unknown = 0;
+    for (const f of files) {
       if (f && f.stats) {
-        hidden.additions += f.stats.additions;
-        hidden.deletions += f.stats.deletions;
-      } else {
-        unknownHidden++;
-      }
+        t.additions += f.stats.additions;
+        t.deletions += f.stats.deletions;
+      } else unknown++;
     }
-    const shown = total
-      ? {
-          additions: Math.max(0, total.additions - hidden.additions),
-          deletions: Math.max(0, total.deletions - hidden.deletions),
-        }
-      : null;
-    return { total: total || null, hidden, shown, unknownHidden };
+    return { sum: t, unknown };
+  };
+
+  /**
+   * Combine the files the filters hide / keep (lists of { stats | null }) with the
+   * optional PR total. `shown` is summed from the visible files' own counts
+   * (reliable, independent of GitHub's toolbar); only when `shownFiles` is not
+   * given does it fall back to total - hidden. Files without counts (not loaded
+   * yet, binary, ...) are tallied in `unknownHidden` / `unknownShown`, never guessed.
+   * Returns { total, hidden, shown, unknownHidden, unknownShown }.
+   */
+  function summarize(total, hiddenFiles, shownFiles) {
+    const h = sum(hiddenFiles);
+    let shown = null;
+    let unknownShown = 0;
+    if (shownFiles) {
+      const s = sum(shownFiles);
+      shown = s.sum;
+      unknownShown = s.unknown;
+    } else if (total) {
+      shown = {
+        additions: Math.max(0, total.additions - h.sum.additions),
+        deletions: Math.max(0, total.deletions - h.sum.deletions),
+      };
+    }
+    return { total: total || null, hidden: h.sum, shown, unknownHidden: h.unknown, unknownShown };
   }
 
   return { parseFileStats, parseTotalStats, summarize };

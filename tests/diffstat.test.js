@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { parseFileStats, parseTotalStats, summarize } = require('../src/diffstat.js');
 
 test('parseFileStats: GitHub screen-reader text', () => {
+  assert.deepEqual(parseFileStats('Lines changed: 7 additions & 3 deletions'), { additions: 7, deletions: 3 });
   assert.deepEqual(parseFileStats(' 342 changes: 173 additions & 169 deletions '), { additions: 173, deletions: 169 });
   assert.deepEqual(parseFileStats('8 changes: 8 additions & 0 deletions'), { additions: 8, deletions: 0 });
   assert.deepEqual(parseFileStats('2 changes: 1 addition & 1 deletion'), { additions: 1, deletions: 1 });
@@ -48,4 +49,11 @@ test('summarize: no total -> shown is null; shown never goes negative', () => {
   assert.equal(none.shown, null);
   const over = summarize({ additions: 1, deletions: 0 }, [{ stats: { additions: 5, deletions: 2 } }]);
   assert.deepEqual(over.shown, { additions: 0, deletions: 0 });
+});
+
+test('summarize: shown is summed from visible files when given', () => {
+  const s = summarize(null, [{ stats: { additions: 4, deletions: 1 } }], [{ stats: { additions: 3, deletions: 2 } }, { stats: { additions: 7, deletions: 0 } }, { stats: null }]);
+  assert.deepEqual(s.shown, { additions: 10, deletions: 2 });
+  assert.equal(s.unknownShown, 1);
+  assert.deepEqual(s.hidden, { additions: 4, deletions: 1 });
 });

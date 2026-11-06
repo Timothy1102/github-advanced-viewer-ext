@@ -70,8 +70,10 @@
     // Header link whose title is "old → new" for renames.
     diffFileTitleLink: '.file-header a.Link--primary[title]',
     renameArrow: ' → ',
-    // Screen-reader span in the file header: "342 changes: 173 additions & 169 deletions".
-    diffFileStatText: '.file-header .sr-only',
+    // Screen-reader span in the file header. Classic: "342 changes: 173 additions & 169
+    // deletions"; React layout (no .file-header): "Lines changed: 7 additions & 3 deletions".
+    // Other .sr-only spans in the block are skipped by the parser.
+    diffFileStatText: '.sr-only',
     // PR-wide total in the toolbar: "+183 −173".
     totalDiffstat: '#diffstat',
 
@@ -464,6 +466,19 @@
     return [...byKey.values()].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   }
 
+  /** Files no filter hides (one per file; a loaded diff block wins over its tree entry). */
+  function shownFiles() {
+    const byKey = new Map();
+    for (const rec of records.values()) {
+      if (rec.pattern !== null) continue;
+      const prev = byKey.get(rec.key);
+      if (!prev || (rec.kind === 'diff' && prev.kind !== 'diff')) byKey.set(rec.key, rec);
+    }
+    return [...byKey.values()];
+  }
+
+  const computeStats = (hidden) => diffstat.summarize(diffstat.parseTotalStats(readTotalText()), hidden, shownFiles());
+
   function setRevealed(on) {
     state.revealed = on;
     document.documentElement.toggleAttribute(ATTR_REVEALED, on);
@@ -522,9 +537,9 @@
   function buildStats(stats) {
     const part = (label, counts) => h('span', { class: 'pff-stat' }, `${label} `, buildCounts(counts));
     const parts = [];
-    if (stats.total) parts.push(part('All', stats.total));
-    if (stats.shown) parts.push(part('After filters', stats.shown));
+    if (stats.shown) parts.push(part('Shown', stats.shown));
     parts.push(part('Hidden', stats.hidden));
+    if (stats.total) parts.push(part('All', stats.total));
     const row = h('div', { class: 'pff-stats' }, h('span', { class: 'pff-stats-label', text: 'Lines changed:' }));
     parts.forEach((p, i) => row.append(i === 0 ? ' ' : h('span', { class: 'pff-sep', text: ' · ' }), p));
     if (stats.unknownHidden > 0) {
@@ -534,6 +549,16 @@
           class: 'pff-why',
           title: 'Line counts are unavailable for these hidden files (binary, or not loaded yet), so they are not subtracted.',
           text: ` (${k} hidden ${k === 1 ? 'file' : 'files'} without line counts)`,
+        })
+      );
+    }
+    if (stats.unknownShown > 0) {
+      const k = stats.unknownShown;
+      row.append(
+        h('span', {
+          class: 'pff-why',
+          title: 'Line counts are unavailable for these shown files (binary, or not loaded yet), so they are not included in Shown.',
+          text: ` (${k} shown ${k === 1 ? 'file' : 'files'} without line counts)`,
         })
       );
     }
@@ -627,7 +652,7 @@
     // Rebuilding drops focus and list scroll; keep both (keyboard users, long lists).
     const focusedAction = attached && old.contains(document.activeElement) ? document.activeElement.dataset.pffAction : null;
 
-    const stats = diffstat.summarize(diffstat.parseTotalStats(readTotalText()), files);
+    const stats = computeStats(files);
     const banner = buildBanner(files, stats);
     if (attached && old.parentElement === host) old.replaceWith(banner);
     else {
@@ -796,7 +821,7 @@
     revealed: state.revealed,
     records: records.size,
     hidden: hiddenFiles().map((f) => ({ path: f.path, oldPath: f.oldPath, pattern: f.pattern, stats: f.stats })),
-    lines: diffstat.summarize(diffstat.parseTotalStats(readTotalText()), hiddenFiles()),
+    lines: computeStats(hiddenFiles()),
     selectors: SELECTORS,
   });
 
