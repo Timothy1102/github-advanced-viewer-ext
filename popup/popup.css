@@ -38,6 +38,10 @@
   box-sizing: border-box;
 }
 
+html {
+  min-height: 420px;
+}
+
 body {
   width: 360px;
   margin: 0;
@@ -68,9 +72,11 @@ h1 {
   margin-bottom: 4px;
 }
 
+/* Status lines change text as toggles flip. Reserve their full height so the
+   popup never resizes mid-interaction (Chrome can blank the popup when it does). */
 #tab-status {
   margin: 0 0 8px;
-  min-height: 1.4em;
+  min-height: 2.8em;
 }
 
 /* --- conversation noise switch ------------------------------------------- */
@@ -91,6 +97,7 @@ h1 {
 }
 .noise-copy p {
   margin: 2px 0 0;
+  min-height: 2.8em;
 }
 
 /* --- switch ----------------------------------------------------------- */

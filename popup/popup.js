@@ -326,16 +326,21 @@
     } catch (_) {
       // chrome.tabs.query failed: keep the default texts.
     }
-    $('tab-status').textContent = filesText;
-    $('noise-status').textContent = noiseText;
+    // Only touch the DOM when the text changed, to avoid needless relayout.
+    if ($('tab-status').textContent !== filesText) $('tab-status').textContent = filesText;
+    if ($('noise-status').textContent !== noiseText) $('noise-status').textContent = noiseText;
   }
 
   // --- boot ---------------------------------------------------------------------------------------------
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes[storage.STORAGE_KEY]) return;
-    ui.settings = storage.normalize(changes[storage.STORAGE_KEY].newValue);
-    render();
+    const next = storage.normalize(changes[storage.STORAGE_KEY].newValue);
+    // Our own writes already re-rendered; skip the duplicate rebuild.
+    if (JSON.stringify(next) !== JSON.stringify(ui.settings)) {
+      ui.settings = next;
+      render();
+    }
     setTimeout(refreshTabStatus, 300); // give the tab's content script a moment to re-filter
   });
 
