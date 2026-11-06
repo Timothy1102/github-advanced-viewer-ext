@@ -49,7 +49,7 @@ After editing the source, click the reload icon on the extension's card in `chro
   | Category | Hidden |
   | --- | --- |
   | resolved threads | inline review threads marked **Resolved**. A review left with nothing visible loses its header too |
-  | bot comments | reviews and comments written only by GitHub Apps (author links to `/apps/<name>`), and review threads made only of bot comments. If a person replied in a bot's thread, it stays |
+  | bot comments | reviews and comments written only by GitHub Apps (author links to `/apps/<name>`). A bot review is hidden only when it has no unresolved thread; unresolved threads are always shown, even when only a bot wrote them |
   | timeline events | draft / ready for review, review requested, "Copilot started reviewing", title changes, labels, assignees, and similar rows |
 
 - Never hidden: the PR description (even if a bot opened the PR), commits, human comments and reviews (apart from their resolved threads), and merged / closed / reopened / force-pushed rows.
@@ -186,7 +186,7 @@ Conversation noise (use a PR with bot reviews, a few timeline events such as dra
 14. **Hidden by default**: open the PR's Conversation tab. Bot reviews/comments, resolved threads and status rows are gone; commits, the PR description and human comments remain. The button reads `N noise items hidden`; hovering it breaks the number down.
 15. **Toggle**: click **Show**: everything returns with dashed outlines, the button reads **Hide**. Click it: hidden again. Reload: the choice is remembered.
 16. **Popup**: the **Hide conversation noise** switch matches the button; flip it in the popup and the open PR tab follows without a reload. While the Conversation tab is active the popup lists the counts.
-17. **Mixed threads**: find (or ask a teammate to make) a bot thread that a person replied to: it stays visible. A review whose threads are all resolved and has no body disappears entirely, header included.
+17. **Bot threads**: an unresolved review thread written by a bot stays visible (with its review header); once resolved it is hidden. A review whose threads are all resolved and has no body disappears entirely, header included.
 18. **Kept rows**: a merged / closed / reopened / force-pushed row is never hidden.
 19. **Permalink**: copy the link of a hidden bot review (its timestamp) and open it in a new tab: the noise is shown for that view and the button says **Showing**.
 20. **Navigation without reload**: Conversation → Files changed → Conversation: no leftover button or hidden items on Files changed, and the noise is hidden again when you return.

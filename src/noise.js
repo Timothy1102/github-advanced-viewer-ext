@@ -9,7 +9,7 @@
  * What counts as noise on a PR's Conversation tab:
  *   resolved - review threads GitHub marks resolved
  *   bots     - reviews / comments written only by GitHub Apps (claude, Copilot,
- *              dependabot, github-actions, ...), and bot-only review threads
+ *              dependabot, github-actions, ...); never their unresolved review threads
  *   events   - timeline rows such as "marked this pull request as draft",
  *              "requested review from ...", "Copilot started reviewing ...",
  *              "changed the title", label / assignee changes

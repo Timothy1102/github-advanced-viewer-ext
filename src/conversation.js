@@ -13,7 +13,7 @@
  * PR tab follows it.
  *
  *   resolved  review threads marked resolved
- *   bots      reviews / comments written only by GitHub Apps, bot-only threads
+ *   bots      bot-only reviews with no unresolved thread, bot issue comments
  *   events    timeline rows: draft / ready for review, review requested,
  *             "Copilot started reviewing", title changes, labels, ...
  *
@@ -166,8 +166,8 @@
   }
 
   /**
-   * A review: hide resolved threads and bot-only threads; hide the whole review
-   * when only bots took part. `marks` receives element -> category.
+   * A review: hide resolved threads; hide the whole review when only bots took
+   * part and no unresolved thread remains. `marks` receives element -> category.
    */
   function evaluateReview(item, root, marks) {
     const threads = [...item.querySelectorAll(SELECTORS.thread)].map((el) => {
@@ -179,14 +179,15 @@
       }
       const hrefs = authorHrefs(el);
       const resolved = el.getAttribute(SELECTORS.threadResolvedAttr) === 'true';
-      const category = resolved ? 'resolved' : noise.isBotOnly(hrefs) ? 'bots' : null;
+      // Unresolved threads are never noise, whoever wrote them: they still need an answer.
+      const category = resolved ? 'resolved' : null;
       return { wrapper, hrefs, category };
     });
 
     const hiddenWrappers = threads.filter((t) => t.category).map((t) => t.wrapper);
-    // A visible thread with no comments yet is still loading: we cannot say who is in it.
-    const loading = threads.some((t) => !t.category && t.hrefs.length === 0);
-    if (!loading && noise.isBotOnly(authorHrefs(item, hiddenWrappers))) {
+    // A bot review is hidden only when no unresolved thread is left in it.
+    const hasOpenThread = threads.some((t) => !t.category);
+    if (!hasOpenThread && noise.isBotOnly(authorHrefs(item, hiddenWrappers))) {
       marks.set(item, 'bots');
       return;
     }
