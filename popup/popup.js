@@ -152,7 +152,14 @@
 
     const list = $('filters');
     list.classList.toggle('master-off', !settings.enabled);
+    const scrollTop = list.scrollTop;
+    const focusedId = document.activeElement && document.activeElement.closest('.row') ? document.activeElement.closest('.row').dataset.id : null;
     list.replaceChildren(...settings.filters.map(buildRow));
+    list.scrollTop = scrollTop; // rebuilding must not jump the list back to the top
+    if (focusedId && !ui.focusEdit) {
+      const again = list.querySelector(`.row[data-id="${CSS.escape(focusedId)}"] input[type="checkbox"]`);
+      if (again && document.activeElement === document.body) again.focus({ preventScroll: true });
+    }
     $('empty').hidden = settings.filters.length > 0;
 
     if (ui.focusEdit) {
