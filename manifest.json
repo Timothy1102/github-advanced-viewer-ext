@@ -11,7 +11,7 @@
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
-      "js": ["src/matcher.js", "src/storage.js", "src/content.js"],
+      "js": ["src/matcher.js", "src/storage.js", "src/diffstat.js", "src/content.js"],
       "css": ["src/content.css"],
       "run_at": "document_end"
     }

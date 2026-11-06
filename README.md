@@ -24,7 +24,11 @@ After editing the source, click the reload icon on the extension's card in `chro
 
 ```
 [≡]  3 files hidden by GitHub Advanced Viewer      [Show]  [List ▾]
+     Lines changed: All +782 −4 · After filters +300 −1 · Hidden +482 −3
 ```
+
+- **Lines changed** shows GitHub's PR total (**All**), what is left once the filters are applied (**After filters**), and what the filters hid (**Hidden**). *After filters* is the PR total minus the hidden files' own counts, read from each file's header.
+- Hidden files whose line counts are unavailable (binary files, or a diff GitHub hasn't rendered yet) are not subtracted; the banner says how many there are, so *After filters* is then slightly overstated.
 
 - **Show** reveals the hidden files for this page view only (nothing is saved) and the button becomes **Hide again**. Revealed files get a dashed outline so you can tell them apart.
 - **List ▾** expands the list of hidden paths, with the pattern that matched each one (and the old name for renamed files).
@@ -94,6 +98,7 @@ These selectors live in the `SELECTORS` object at the top of `src/content.js`. T
 
 - File block: `div.file[data-tagsearch-path]` (id `diff-<sha256>`). For renamed files the attribute holds the **new** path; the header link `a.Link--primary[title]` holds `old → new` (its visible text is ellipsized, so the title is used).
 - Sidebar entry: `li[role=treeitem][data-tree-entry-type=file]` with id `file-tree-item-` + the block's id, and a hidden `[data-filterable-item-text]` span holding the path. The tree lists **all** files even before their diffs load, so the banner count is exact immediately.
+- Line counts: each file header has a screen-reader span `.file-header .sr-only` reading `N changes: A additions & D deletions`; the PR total is the `#diffstat` element in the toolbar (`+183 −173`, with a U+2212 minus). Parsing lives in `src/diffstat.js`.
 - CI annotations on unchanged files render as a `div.file` with no `data-tagsearch-path` and no tree entry. These are deliberately **never hidden**.
 
 If GitHub changes this markup, the extension logs a single warning on the files page:
@@ -120,7 +125,7 @@ npm test            # or: node --test "tests/*.test.js"
 
 No dependencies; uses Node's built-in test runner (Node 18+). `tests/matcher.test.js` covers the glob syntax, case sensitivity, escaping, renames, validation and pathological patterns. `tests/storage.test.js` covers defaults, normalization of corrupt data, seeding that never overwrites, add/edit/remove/validation and export/import against an in-memory fake of `chrome.storage`.
 
-The shared files (`src/matcher.js`, `src/storage.js`) are written so the same file works as a content-script/popup `<script>` (attaching to `globalThis.PRFilesFilter`), via `importScripts` in the service worker, and via `require` in Node.
+The shared files (`src/matcher.js`, `src/storage.js`, `src/diffstat.js`) are written so the same file works as a content-script/popup `<script>` (attaching to `globalThis.PRFilesFilter`), via `importScripts` in the service worker, and via `require` in Node.
 
 To regenerate the placeholder icons: `npm run icons` (`node scripts/generate-icons.js`, dependency-free).
 
@@ -148,6 +153,7 @@ Use any PR that changes a `*.spec.ts` or `*.snap` file, ideally a large one.
 manifest.json
 src/matcher.js      glob matcher (pure, shared)
 src/storage.js      schema, defaults, normalization, storage helpers (shared)
+src/diffstat.js     parses GitHub's line counts, computes the after-filters totals (pure, shared)
 src/content.js      DOM discovery, hiding, banner, observers (+ SELECTORS)
 src/content.css     hiding rules and banner styles
 src/background.js   service worker: seeds defaults on install

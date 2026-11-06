@@ -1,7 +1,7 @@
 /*
  * GitHub Advanced Viewer - content script (injected on https://github.com/*).
  *
- * Load order (manifest): matcher.js, storage.js, content.js - they share
+ * Load order (manifest): matcher.js, storage.js, diffstat.js, content.js - they share
  * globalThis.PRFilesFilter.
  *
  * What it does on https://github.com/<owner>/<repo>/pull/<n>/files:
@@ -41,11 +41,11 @@
 
   const LOG = '[GitHub Advanced Viewer]';
   const NS = globalThis.PRFilesFilter;
-  if (!NS || !NS.matcher || !NS.storage) {
+  if (!NS || !NS.matcher || !NS.storage || !NS.diffstat) {
     console.warn(`${LOG} shared scripts did not load; doing nothing.`);
     return;
   }
-  const { matcher, storage } = NS;
+  const { matcher, storage, diffstat } = NS;
 
   // ---------------------------------------------------------------------------
   // All GitHub-specific knowledge lives here. If GitHub changes its markup,
@@ -62,6 +62,10 @@
     // Header link whose title is "old → new" for renames.
     diffFileTitleLink: '.file-header a.Link--primary[title]',
     renameArrow: ' → ',
+    // Screen-reader span in the file header: "342 changes: 173 additions & 169 deletions".
+    diffFileStatText: '.file-header .sr-only',
+    // PR-wide total in the toolbar: "+183 −173".
+    totalDiffstat: '#diffstat',
 
     // Left-hand file tree.
     treeFile: 'li[role="treeitem"][data-tree-entry-type="file"]',
@@ -100,13 +104,16 @@
     listScroll: 0, // scrollTop of the open list, kept across banner rebuilds
     banner: null,
     hiddenCount: 0,
+    totalText: '', // last seen text of the PR-wide #diffstat (change => re-render)
     warnTimer: 0,
     warned: false,
   };
 
   /**
    * One record per file block / tree entry we have looked at:
-   *   { kind: 'diff'|'tree', key, path, oldPath, pattern|null, version }
+   *   { kind: 'diff'|'tree', key, path, oldPath, stats, pattern|null, version }
+   * `stats` is { additions, deletions } for a diff block whose header shows line
+   * counts, else null (tree entries never have it).
    * `key` is the diff block's id, shared by a file's block and its tree entry,
    * so a file is counted once. `version` makes re-processing idempotent.
    */
@@ -186,6 +193,21 @@
     return title.endsWith(suffix) ? title.slice(0, title.length - suffix.length) || null : null;
   }
 
+  /** Line counts from a file block's header, or null (binary file, markup changed, ...). */
+  function readFileStats(block) {
+    for (const el of block.querySelectorAll(SELECTORS.diffFileStatText)) {
+      const stats = diffstat.parseFileStats(el.textContent);
+      if (stats) return stats;
+    }
+    return null;
+  }
+
+  /** The PR-wide total from GitHub's own toolbar counter, or null if it isn't on the page. */
+  function readTotalText() {
+    const el = document.querySelector(SELECTORS.totalDiffstat);
+    return el ? el.textContent : '';
+  }
+
   /** Decide + apply for one file block. Cheap and idempotent per filter version. */
   function evaluateDiffFile(block) {
     let rec = records.get(block);
@@ -198,6 +220,7 @@
         key: block.id || `path:${path}`,
         path,
         oldPath: readOldPath(block, path),
+        stats: readFileStats(block),
         pattern: null,
         version: -1,
       };
@@ -243,6 +266,7 @@
         key: li.id && li.id.startsWith(prefix) ? li.id.slice(prefix.length) : `path:${path}`,
         path,
         oldPath: null,
+        stats: null,
         pattern: null,
         version: -1,
       };
@@ -339,6 +363,11 @@
       state.treeDirty = false;
       updateEmptyFolders();
     }
+    const totalText = readTotalText();
+    if (totalText !== state.totalText) {
+      state.totalText = totalText; // GitHub's counter appeared/changed after the banner was drawn
+      state.summaryDirty = true;
+    }
     renderBanner();
   }
 
@@ -433,7 +462,42 @@
     return svg;
   }
 
-  function buildBanner(files) {
+  const fmt = (n) => n.toLocaleString('en-US');
+
+  /** "+300 −1" with GitHub's green/red, or a plain dash when unknown. */
+  function buildCounts(c) {
+    return h(
+      'span',
+      { class: 'pff-counts' },
+      h('span', { class: 'pff-add', text: `+${fmt(c.additions)}` }),
+      ' ',
+      h('span', { class: 'pff-del', text: `\u2212${fmt(c.deletions)}` })
+    );
+  }
+
+  /** "Lines: all +782 −4 · after filters +300 −1 · hidden +482 −3" */
+  function buildStats(stats) {
+    const part = (label, counts) => h('span', { class: 'pff-stat' }, `${label} `, buildCounts(counts));
+    const parts = [];
+    if (stats.total) parts.push(part('All', stats.total));
+    if (stats.shown) parts.push(part('After filters', stats.shown));
+    parts.push(part('Hidden', stats.hidden));
+    const row = h('div', { class: 'pff-stats' }, h('span', { class: 'pff-stats-label', text: 'Lines changed:' }));
+    parts.forEach((p, i) => row.append(i === 0 ? ' ' : h('span', { class: 'pff-sep', text: ' · ' }), p));
+    if (stats.unknownHidden > 0) {
+      const k = stats.unknownHidden;
+      row.append(
+        h('span', {
+          class: 'pff-why',
+          title: 'Line counts are unavailable for these hidden files (binary, or not loaded yet), so they are not subtracted.',
+          text: ` (${k} hidden ${k === 1 ? 'file' : 'files'} without line counts)`,
+        })
+      );
+    }
+    return row;
+  }
+
+  function buildBanner(files, stats) {
     const n = files.length;
     const noun = n === 1 ? 'file' : 'files';
     const listId = `${BANNER_ID}-list`;
@@ -481,6 +545,7 @@
       'div',
       { id: BANNER_ID, class: 'pff-banner', role: 'region', 'aria-label': 'GitHub Advanced Viewer' },
       h('div', { class: 'pff-row' }, buildIcon(), h('span', { class: 'pff-msg' }, ...message), toggle, details),
+      buildStats(stats),
       list
     );
     banner.addEventListener('click', onBannerClick);
@@ -519,7 +584,8 @@
     // Rebuilding drops focus and list scroll; keep both (keyboard users, long lists).
     const focusedAction = attached && old.contains(document.activeElement) ? document.activeElement.dataset.pffAction : null;
 
-    const banner = buildBanner(files);
+    const stats = diffstat.summarize(diffstat.parseTotalStats(readTotalText()), files);
+    const banner = buildBanner(files, stats);
     if (attached && old.parentElement === host) old.replaceWith(banner);
     else {
       removeBanner();
@@ -685,7 +751,8 @@
     filters: state.filters.map((f) => f.pattern),
     revealed: state.revealed,
     records: records.size,
-    hidden: hiddenFiles().map((f) => ({ path: f.path, oldPath: f.oldPath, pattern: f.pattern })),
+    hidden: hiddenFiles().map((f) => ({ path: f.path, oldPath: f.oldPath, pattern: f.pattern, stats: f.stats })),
+    lines: diffstat.summarize(diffstat.parseTotalStats(readTotalText()), hiddenFiles()),
     selectors: SELECTORS,
   });
 
