@@ -12,7 +12,7 @@
 (() => {
   'use strict';
 
-  const { storage, matcher } = globalThis.PRFilesFilter;
+  const { storage, matcher, noise } = globalThis.PRFilesFilter;
   const $ = (id) => document.getElementById(id);
 
   const ui = {
@@ -148,6 +148,7 @@
 
     $('master').checked = settings.enabled;
     $('master-label').textContent = settings.enabled ? 'On' : 'Off';
+    $('noise-toggle').checked = settings.hideNoise;
 
     const list = $('filters');
     list.classList.toggle('master-off', !settings.enabled);
@@ -218,6 +219,13 @@
     if (!res.ok) showNote(res.error);
   });
 
+  // --- conversation noise switch ------------------------------------------------------------------------
+
+  $('noise-toggle').addEventListener('change', async (e) => {
+    const res = await mutate((s) => storage.setHideNoise(s, e.target.checked));
+    if (!res.ok) showNote(res.error);
+  });
+
   // --- reset to defaults (two-step confirm, no window.confirm) ------------------------------------
 
   const resetBtn = $('reset');
@@ -280,25 +288,46 @@
   // chrome.tabs.query/sendMessage need no extra permission: we only read the
   // tab id and talk to our own content script, which answers on GitHub PR pages.
 
+  const NOISE_HINT = 'Resolved threads, bot comments and status events on a pull request’s Conversation tab.';
+
+  /** Ask the active tab's content script; null when there is none (not GitHub, or not reloaded yet). */
+  async function askTab(tabId, type) {
+    try {
+      return await chrome.tabs.sendMessage(tabId, { type });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function describeNoise(res) {
+    const summary = noise.summarize(res.counts);
+    if (!summary.total) return 'No noise on this page.';
+    return `${summary.text} ${res.shown ? 'shown' : 'hidden'} in this tab.`;
+  }
+
   async function refreshTabStatus() {
-    const out = $('tab-status');
-    let text = 'Open a pull request’s Files changed tab to see hidden counts.';
+    let filesText = 'Open a pull request’s Files changed tab to see hidden counts.';
+    let noiseText = NOISE_HINT;
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const res = tab && tab.id != null ? await chrome.tabs.sendMessage(tab.id, { type: 'pff:getStatus' }) : null;
-      if (res && res.onFilesPage) {
-        if (!res.filtering) text = 'Filtering is off in this tab.';
-        else if (res.hiddenCount === 0) text = 'No files hidden in this tab.';
-        else {
-          text = `${res.hiddenCount} file${res.hiddenCount === 1 ? '' : 's'} hidden in this tab`;
-          if (res.revealed) text += ' (currently shown)';
-          text += '.';
+      if (tab && tab.id != null) {
+        const [res, conversation] = await Promise.all([askTab(tab.id, 'pff:getStatus'), askTab(tab.id, 'pff:getNoiseStatus')]);
+        if (res && res.onFilesPage) {
+          if (!res.filtering) filesText = 'Filtering is off in this tab.';
+          else if (res.hiddenCount === 0) filesText = 'No files hidden in this tab.';
+          else {
+            filesText = `${res.hiddenCount} file${res.hiddenCount === 1 ? '' : 's'} hidden in this tab`;
+            if (res.revealed) filesText += ' (currently shown)';
+            filesText += '.';
+          }
         }
+        if (conversation && conversation.onConversationPage) noiseText = describeNoise(conversation);
       }
     } catch (_) {
-      // No content script in the active tab (not GitHub, or not reloaded yet): keep the default text.
+      // chrome.tabs.query failed: keep the default texts.
     }
-    out.textContent = text;
+    $('tab-status').textContent = filesText;
+    $('noise-status').textContent = noiseText;
   }
 
   // --- boot ---------------------------------------------------------------------------------------------

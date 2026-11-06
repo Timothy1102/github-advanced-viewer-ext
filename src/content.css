@@ -26,7 +26,8 @@ html[data-pff-revealed] li[data-pff-hidden] {
 /* GitHub's own theme variables first (they follow GitHub's light/dark mode),
    hard-coded fallbacks second. The prefers-color-scheme block only changes the
    fallbacks, for the case where the variables don't exist. */
-.pff-banner {
+.pff-banner,
+.pff-noise-pill {
   --pff-fg: var(--fgColor-muted, #59636e);
   --pff-strong: var(--fgColor-default, #1f2328);
   --pff-bg: var(--bgColor-muted, #f6f8fa);
@@ -35,7 +36,9 @@ html[data-pff-revealed] li[data-pff-hidden] {
   --pff-btn-bg: var(--bgColor-default, #ffffff);
   --pff-add: var(--fgColor-success, #1a7f37);
   --pff-del: var(--fgColor-danger, #d1242f);
+}
 
+.pff-banner {
   margin: 0 0 16px;
   padding: 8px 12px;
   color: var(--pff-fg);
@@ -47,7 +50,8 @@ html[data-pff-revealed] li[data-pff-hidden] {
 }
 
 @media (prefers-color-scheme: dark) {
-  .pff-banner {
+  .pff-banner,
+  .pff-noise-pill {
     --pff-fg: var(--fgColor-muted, #9198a1);
     --pff-strong: var(--fgColor-default, #f0f6fc);
     --pff-bg: var(--bgColor-muted, #151b23);
@@ -149,4 +153,55 @@ html[data-pff-revealed] li[data-pff-hidden] {
 }
 .pff-why {
   color: var(--pff-fg);
+}
+
+/* --- conversation noise ------------------------------------------------------- */
+/* content.js's files rules above use data-pff-hidden; the Conversation tab uses
+   data-pff-noise (set by conversation.js) and <html data-pff-noise-shown> to reveal. */
+
+html:not([data-pff-noise-shown]) [data-pff-noise] {
+  display: none !important;
+}
+
+/* While shown, keep noise recognisable. "empty" wrappers hold nothing of their own. */
+html[data-pff-noise-shown] [data-pff-noise]:not([data-pff-noise="empty"]) {
+  outline: 1px dashed var(--fgColor-attention, #9a6700);
+  outline-offset: -1px;
+}
+
+/* The toggle: fixed bottom-left so it never collides with GitHub's sticky header or
+   the right-hand sidebar, and below GitHub's own menus and dialogs. */
+.pff-noise-pill {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+  padding: 4px 12px;
+  color: var(--pff-fg);
+  background: var(--pff-bg);
+  border: 1px solid var(--pff-border);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(31, 35, 40, 0.15);
+  font: inherit;
+  font-size: 12px;
+  line-height: 20px;
+  cursor: pointer;
+}
+.pff-noise-pill:hover {
+  border-color: var(--pff-accent);
+}
+.pff-noise-pill:focus-visible {
+  outline: 2px solid var(--pff-accent);
+  outline-offset: 2px;
+}
+.pff-noise-msg {
+  color: var(--pff-strong);
+  font-weight: 600;
+}
+.pff-noise-action {
+  color: var(--pff-accent);
 }

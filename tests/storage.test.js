@@ -188,3 +188,45 @@ test('exportJson / mergeImport round trip; import is additive and skips bad entr
   assert.match(S.mergeImport(s, '{"a":1}').error, /Expected/);
   assert.match(S.mergeImport(s, 'null').error, /Expected/);
 });
+
+test('hideNoise: defaults on; settings saved before it existed pick up the default', async () => {
+  assert.equal(S.defaultSettings().hideNoise, true);
+  const old = { version: 1, enabled: true, filters: [{ id: 'k', pattern: 'only-mine', enabled: true }] }; // no hideNoise key
+  assert.equal(S.normalize(old).hideNoise, true);
+  const area = fakeArea({ settings: old });
+  assert.equal(await S.ensureSeeded(area), false, 'upgrading never rewrites stored settings');
+  assert.equal((await S.load(area)).hideNoise, true);
+  for (const bad of [undefined, null, 'oops', 42, []]) assert.equal(S.normalize(bad).hideNoise, true);
+});
+
+test('hideNoise: only an explicit false turns it off; junk is treated as on', () => {
+  assert.equal(S.normalize({ hideNoise: false, filters: [] }).hideNoise, false);
+  assert.equal(S.normalize({ hideNoise: true, filters: [] }).hideNoise, true);
+  for (const junk of ['no', 0, null, {}]) assert.equal(S.normalize({ hideNoise: junk, filters: [] }).hideNoise, true, String(junk));
+  assert.equal(S.normalize({ hideNoise: false }).hideNoise, false, 'kept even when filters is missing (defaults used)');
+});
+
+test('setHideNoise: independent of the file-filter master switch; never mutates its input', () => {
+  const s = S.defaultSettings();
+  const off = S.setHideNoise(s, false);
+  assert.equal(off.ok, true);
+  assert.equal(off.settings.hideNoise, false);
+  assert.equal(off.settings.enabled, true, 'the file filters stay on');
+  assert.equal(s.hideNoise, true, 'input is not mutated');
+  assert.equal(S.setHideNoise(off.settings, true).settings.hideNoise, true);
+
+  const masterOff = S.setMasterEnabled(s, false).settings;
+  assert.equal(masterOff.hideNoise, true, 'turning file filtering off leaves conversation noise alone');
+});
+
+test('hideNoise survives other edits, reset, import and a storage round-trip', async () => {
+  const area = fakeArea();
+  await S.update((s) => S.setHideNoise(s, false), area);
+  await S.update((s) => S.addFilter(s, 'a.ts'), area);
+  await S.update((s) => S.resetFilters(s), area);
+  await S.update((s) => S.mergeImport(s, JSON.stringify(['b.ts'])), area);
+  const loaded = await S.load(area);
+  assert.equal(loaded.hideNoise, false);
+  assert.equal(loaded.filters.some((f) => f.pattern === 'b.ts'), true);
+  assert.equal(JSON.parse(S.exportJson(loaded)).hideNoise, undefined, 'export is about filters only');
+});

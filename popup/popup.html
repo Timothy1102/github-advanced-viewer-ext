@@ -10,12 +10,23 @@
   <body>
     <header class="top">
       <h1>GitHub Advanced Viewer</h1>
-      <label class="switch master" title="Turn all filtering on or off. Your filter list is kept.">
-        <input type="checkbox" id="master" role="switch" aria-label="Enable filtering" />
+      <label class="switch master" title="Turn all file filtering on or off. Your filter list is kept.">
+        <input type="checkbox" id="master" role="switch" aria-label="Enable file filtering" />
         <span class="track" aria-hidden="true"></span>
         <span class="switch-label" id="master-label">On</span>
       </label>
     </header>
+
+    <section class="noise-box" aria-labelledby="noise-title">
+      <label class="switch" title="Hide noise on a pull request's Conversation tab. The page also has a button to toggle it.">
+        <input type="checkbox" id="noise-toggle" role="switch" aria-labelledby="noise-title" aria-describedby="noise-status" />
+        <span class="track" aria-hidden="true"></span>
+      </label>
+      <div class="noise-copy">
+        <strong id="noise-title">Hide conversation noise</strong>
+        <p id="noise-status" class="muted small" aria-live="polite"></p>
+      </div>
+    </section>
 
     <p id="tab-status" class="muted small" aria-live="polite"></p>
 
@@ -54,6 +65,7 @@
 
     <script src="../src/matcher.js"></script>
     <script src="../src/storage.js"></script>
+    <script src="../src/noise.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

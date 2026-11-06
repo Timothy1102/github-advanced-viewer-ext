@@ -73,6 +73,26 @@ h1 {
   min-height: 1.4em;
 }
 
+/* --- conversation noise switch ------------------------------------------- */
+.noise-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 6px 0 10px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.noise-box .switch {
+  margin-top: 1px;
+}
+.noise-copy {
+  min-width: 0;
+}
+.noise-copy p {
+  margin: 2px 0 0;
+}
+
 /* --- switch ----------------------------------------------------------- */
 .switch {
   display: inline-flex;

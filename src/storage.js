@@ -2,7 +2,11 @@
  * GitHub Advanced Viewer - settings schema, defaults and storage helpers.
  *
  * Schema (chrome.storage.sync, under STORAGE_KEY):
- *   { version: 1, enabled: boolean, filters: [{ id, pattern, enabled }] }
+ *   { version: 1, enabled: boolean, hideNoise: boolean,
+ *     filters: [{ id, pattern, enabled }] }
+ * `enabled` is the master switch for the file filters; `hideNoise` independently
+ * controls hiding of resolved threads / bot comments / timeline events on a PR's
+ * Conversation tab (see noise.js). Both default to on.
  *
  * Loaded the same three ways as matcher.js (classic script / importScripts /
  * Node require). Everything that touches `chrome.storage` takes an optional
@@ -75,6 +79,7 @@
     return {
       version: SCHEMA_VERSION,
       enabled: true,
+      hideNoise: true,
       filters: DEFAULT_FILTERS.map((f) => ({ ...f })),
     };
   }
@@ -93,7 +98,7 @@
    * Turn anything (undefined, corrupt data, an older shape) into valid
    * settings. Rules:
    *   - not an object                      -> defaults
-   *   - `enabled` not a boolean            -> true
+   *   - `enabled` / `hideNoise` not a boolean -> true
    *   - `filters` missing / not an array   -> default filters
    *   - `filters` is an array (even empty) -> kept; a deleted default stays deleted
    *   - bad entries (no string pattern) and duplicate patterns are dropped
@@ -101,7 +106,7 @@
    */
   function normalize(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaultSettings();
-    const out = { version: SCHEMA_VERSION, enabled: raw.enabled !== false, filters: [] };
+    const out = { version: SCHEMA_VERSION, enabled: raw.enabled !== false, hideNoise: raw.hideNoise !== false, filters: [] };
     if (!Array.isArray(raw.filters)) {
       out.filters = defaultSettings().filters;
       return out;
@@ -232,6 +237,9 @@
 
   const setMasterEnabled = (settings, enabled) => ({ ok: true, settings: { ...settings, enabled: !!enabled } });
 
+  /** Hide (true) or show (false) conversation noise. Independent of the file-filter master switch. */
+  const setHideNoise = (settings, hide) => ({ ok: true, settings: { ...settings, hideNoise: !!hide } });
+
   /** Restore the default filters. The master switch is left as the user set it. */
   const resetFilters = (settings) => ({ ok: true, settings: { ...settings, filters: defaultSettings().filters } });
 
@@ -298,6 +306,7 @@
     removeFilter,
     updateFilter,
     setMasterEnabled,
+    setHideNoise,
     resetFilters,
     exportJson,
     mergeImport,

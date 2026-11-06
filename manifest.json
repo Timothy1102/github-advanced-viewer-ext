@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GitHub Advanced Viewer",
   "version": "0.1.0",
-  "description": "Hide files like *.spec.ts and *.snap on GitHub's pull request Files changed tab. A banner always tells you what is hidden.",
+  "description": "Hide noise on GitHub pull requests: files like *.spec.ts and *.snap on Files changed, and resolved threads, bot comments and status events on Conversation. You always see what is hidden.",
   "minimum_chrome_version": "105",
   "permissions": ["storage"],
   "background": {
@@ -11,7 +11,7 @@
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
-      "js": ["src/matcher.js", "src/storage.js", "src/diffstat.js", "src/content.js"],
+      "js": ["src/matcher.js", "src/storage.js", "src/diffstat.js", "src/content.js", "src/noise.js", "src/conversation.js"],
       "css": ["src/content.css"],
       "run_at": "document_end"
     }
