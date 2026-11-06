@@ -205,3 +205,43 @@ html[data-pff-noise-shown] [data-pff-noise]:not([data-pff-noise="empty"]) {
 .pff-noise-action {
   color: var(--pff-accent);
 }
+
+/* The status badge in the PR title row: says whether noise hiding is taking effect. */
+.pff-noise-badge {
+  --pff-fg: var(--fgColor-muted, #59636e);
+  --pff-accent: var(--fgColor-accent, #0969da);
+  --pff-attn: var(--fgColor-attention, #9a6700);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 0 10px;
+  color: var(--pff-fg);
+  background: transparent;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 24px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pff-noise-badge:hover {
+  border-color: var(--pff-accent);
+}
+.pff-noise-badge[data-mode="on"] {
+  color: var(--pff-accent);
+  border-color: var(--pff-accent);
+}
+.pff-noise-badge[data-mode="shown"] {
+  color: var(--pff-attn);
+  border-color: var(--pff-attn);
+}
+@media (prefers-color-scheme: dark) {
+  .pff-noise-badge {
+    --pff-fg: var(--fgColor-muted, #9198a1);
+    --pff-accent: var(--fgColor-accent, #4493f8);
+    --pff-attn: var(--fgColor-attention, #d29922);
+  }
+}

@@ -64,11 +64,14 @@
     commentLike: '.timeline-comment, .comment-body, .js-comment-container, .review-thread-component',
     // A plain "<author> reviewed" header (no approval / change request) has this icon.
     plainReviewIcon: 'eye',
+    // Where the status badge goes: the row under the PR title (Open / Merged + "x wants to merge ...").
+    headerMeta: '#partial-discussion-header .gh-header-meta, .gh-header-meta',
   };
 
   const ATTR_NOISE = 'data-pff-noise'; // value = category, or EMPTY for a wrapper whose contents are all hidden
   const ATTR_SHOWN = 'data-pff-noise-shown'; // on <html> while noise is visible
   const PILL_ID = 'pff-noise-pill';
+  const BADGE_ID = 'pff-noise-badge';
   const EMPTY = 'empty'; // wrapper only: counts nothing itself (its hidden children are counted)
 
   const state = {
@@ -84,6 +87,7 @@
     pill: null,
     pillMsg: null,
     pillAction: null,
+    badge: null,
     flushRaf: 0,
     flushTimer: 0,
   };
@@ -139,6 +143,7 @@
     if (state.active) {
       applyVisibility();
       renderPill();
+      renderBadge();
     }
   }
 
@@ -314,6 +319,57 @@
     pill.setAttribute('aria-label', label);
   }
 
+  // --- the title badge ------------------------------------------------------------------------
+
+  function ensureBadge() {
+    if (state.badge && state.badge.isConnected) return state.badge;
+    const host = document.querySelector(SELECTORS.headerMeta);
+    if (!host) return null; // header not rendered (yet)
+    const stray = document.getElementById(BADGE_ID);
+    if (stray) stray.remove();
+    const badge = h('button', { id: BADGE_ID, type: 'button', class: 'pff-noise-badge' }, buildIcon(), h('span', { class: 'pff-noise-badge-text' }));
+    badge.addEventListener('click', toggle);
+    host.append(badge);
+    state.badge = badge;
+    return badge;
+  }
+
+  function removeBadge() {
+    if (state.badge) state.badge.remove();
+    const stray = document.getElementById(BADGE_ID);
+    if (stray) stray.remove();
+    state.badge = null;
+  }
+
+  /** Always present on a conversation page, so "is the filter working?" has a visible answer. */
+  function renderBadge() {
+    if (!state.active) return removeBadge();
+    const badge = ensureBadge();
+    if (!badge) return;
+    const { total, text } = noise.summarize(state.counts);
+    const shown = isShown();
+    let mode;
+    let label;
+    let title;
+    if (shown) {
+      mode = 'shown';
+      label = total ? `Noise shown (${total})` : 'Noise filter: showing all';
+      title = total ? `Showing ${total} noise items (${text}). Click to hide.` : 'Noise filter is off. Click to turn it on.';
+    } else if (total) {
+      mode = 'on';
+      label = `${total} noise hidden`;
+      title = `Hiding ${total} noise items: ${text}. Click to show.`;
+    } else {
+      mode = 'idle';
+      label = 'Noise filter on';
+      title = 'Noise filter is on; nothing to hide in this PR. Click to turn it off.';
+    }
+    if (badge.getAttribute('data-mode') !== mode) badge.setAttribute('data-mode', mode);
+    setText(badge.lastChild, label);
+    badge.setAttribute('title', title);
+    badge.setAttribute('aria-label', title);
+  }
+
   /** Show / hide all noise. Applied at once, then saved so every PR tab follows. */
   async function toggle() {
     const hide = isShown(); // currently visible -> hide it, and the other way round
@@ -321,6 +377,7 @@
     state.settings = { ...(state.settings || storage.defaultSettings()), hideNoise: hide };
     applyVisibility();
     renderPill();
+    renderBadge();
     const res = await storage.update((s) => storage.setHideNoise(s, hide));
     if (!res || !res.ok) console.warn(`${LOG} could not save the noise toggle:`, res && res.error);
   }
@@ -335,6 +392,7 @@
     revealPermalink();
     applyVisibility();
     renderPill();
+    renderBadge();
   }
 
   /**
@@ -369,7 +427,7 @@
   function touchesTimeline(m) {
     if (m.target.nodeType === 1 && m.target.closest(SELECTORS.timeline)) return true;
     for (const node of m.addedNodes) {
-      if (node.nodeType === 1 && node.id !== PILL_ID && node.querySelector(SELECTORS.timeline)) return true;
+      if (node.nodeType === 1 && node.id !== PILL_ID && node.id !== BADGE_ID && node.querySelector(SELECTORS.timeline)) return true;
     }
     return false;
   }
@@ -377,6 +435,8 @@
   function onMutations(mutations) {
     if (!state.active) return;
     if (mutations.some(touchesTimeline)) flushSoon();
+    // Turbo can replace the header: put the badge back (cheap check, no rescan).
+    else if (state.settings && !(state.badge && state.badge.isConnected)) renderBadge();
   }
 
   // --- activation / navigation ------------------------------------------------------------------
@@ -402,6 +462,7 @@
     state.linkReveal = false;
     state.pendingHash = '';
     removePill();
+    removeBadge();
     document.documentElement.removeAttribute(ATTR_SHOWN);
   }
 
