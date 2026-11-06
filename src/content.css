@@ -12,7 +12,8 @@ html:not([data-pff-revealed]) [data-pff-empty] {
 }
 
 /* While revealed, keep filtered files recognisable so nothing is mistaken for normal review content. */
-html[data-pff-revealed] div.file[data-pff-hidden] {
+html[data-pff-revealed] div.file[data-pff-hidden],
+html[data-pff-revealed] div[id^="diff-"][data-pff-hidden] {
   outline: 2px dashed var(--fgColor-attention, #9a6700);
   outline-offset: -2px;
 }

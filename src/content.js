@@ -57,8 +57,16 @@
     filesPagePath: /^\/([^/]+\/[^/]+\/pull\/\d+)\/(?:files|changes)(?:\/|$)/,
 
     // Changed-file block in the main diff area.
-    diffFile: 'div.file[data-tagsearch-path]',
+    // Classic layout: div.file[data-tagsearch-path]. React layout (/changes):
+    // div#diff-<sha>[role=region][aria-labelledby], no path attribute on the block.
+    diffFile: 'div.file[data-tagsearch-path], div[id^="diff-"][role="region"][aria-labelledby]',
     diffFilePathAttr: 'data-tagsearch-path',
+    // React layout: the path is on the header's "Expand all lines" button...
+    diffFileButton: 'button[data-file-path]',
+    diffFileButtonAttr: 'data-file-path',
+    // ...or, as a fallback, in the header heading ("old → new" for renames,
+    // wrapped in invisible LRM/RLM marks).
+    diffFileHeading: 'h3[id^="heading-"] code',
     // Header link whose title is "old → new" for renames.
     diffFileTitleLink: '.file-header a.Link--primary[title]',
     renameArrow: ' → ',
@@ -68,13 +76,17 @@
     totalDiffstat: '#diffstat',
 
     // Left-hand file tree.
-    treeFile: 'li[role="treeitem"][data-tree-entry-type="file"]',
-    treeDir: 'li[role="treeitem"][data-tree-entry-type="directory"]',
+    // Classic: data-tree-entry-type. React layout: no such attribute; folders carry
+    // aria-expanded, files don't, and a file's li id IS its (new) path.
+    treeFile:
+      'li[role="treeitem"][data-tree-entry-type="file"], li[role="treeitem"]:not([data-tree-entry-type]):not([aria-expanded])',
+    treeDir:
+      'li[role="treeitem"][data-tree-entry-type="directory"], li[role="treeitem"][aria-expanded]:not([data-tree-entry-type])',
     treeFilePathText: '[data-filterable-item-text]',
     treeIdPrefix: 'file-tree-item-', // + the file block's id
 
     // Where the banner goes (first match wins; it is inserted as first child).
-    bannerHosts: ['#files', '.js-diff-container', '.Layout-main'],
+    bannerHosts: ['#diff-comparison-viewer-container', '#files', '.js-diff-container', '.Layout-main'],
   };
 
   const ATTR_HIDDEN = 'data-pff-hidden'; // value = the pattern that matched
@@ -118,6 +130,7 @@
    * so a file is counted once. `version` makes re-processing idempotent.
    */
   const records = new Map();
+  const blocksByPath = new Map(); // path -> diff block, for tree entries whose id isn't the block's
 
   // --- small utilities ---------------------------------------------------------
 
@@ -184,10 +197,33 @@
     }
   }
 
-  /** For a renamed file, the pre-rename path from the header link's title. */
+  /** Text of the React layout's header heading, minus the invisible direction marks. */
+  function readHeadingText(block) {
+    const el = block.querySelector(SELECTORS.diffFileHeading);
+    return el ? el.textContent.replace(/[\u200E\u200F]/g, '').trim() : '';
+  }
+
+  /** A file block's (new) path in either layout, or ''. */
+  function readDiffPath(block) {
+    const attr = block.getAttribute(SELECTORS.diffFilePathAttr);
+    if (attr) return attr;
+    const btn = block.querySelector(SELECTORS.diffFileButton);
+    const fromButton = btn && btn.getAttribute(SELECTORS.diffFileButtonAttr);
+    if (fromButton) return fromButton;
+    const heading = readHeadingText(block);
+    const i = heading.lastIndexOf(SELECTORS.renameArrow);
+    return i === -1 ? heading : heading.slice(i + SELECTORS.renameArrow.length);
+  }
+
+  /** For a renamed file, the pre-rename path from the header link's title (or heading). */
   function readOldPath(block, newPath) {
     const link = block.querySelector(SELECTORS.diffFileTitleLink);
-    const title = link && link.getAttribute('title');
+    let title = link && link.getAttribute('title');
+    if (!title) {
+      const heading = readHeadingText(block);
+      const i = heading.lastIndexOf(SELECTORS.renameArrow);
+      if (i !== -1) return heading.slice(0, i) || null;
+    }
     if (!title || title === newPath) return null;
     const suffix = SELECTORS.renameArrow + newPath;
     return title.endsWith(suffix) ? title.slice(0, title.length - suffix.length) || null : null;
@@ -213,11 +249,14 @@
     let rec = records.get(block);
     if (rec && rec.version === state.version) return rec;
     if (!rec) {
-      const path = block.getAttribute(SELECTORS.diffFilePathAttr);
+      const path = readDiffPath(block);
       if (!path) return null;
+      // Classic: the block id is shared with its tree entry. React layout: the
+      // tree entry's id is its path, so path is the shared key.
+      const classic = block.hasAttribute(SELECTORS.diffFilePathAttr);
       rec = {
         kind: 'diff',
-        key: block.id || `path:${path}`,
+        key: classic && block.id ? block.id : `path:${path}`,
         path,
         oldPath: readOldPath(block, path),
         stats: readFileStats(block),
@@ -225,6 +264,7 @@
         version: -1,
       };
       records.set(block, rec);
+      blocksByPath.set(path, block);
     }
     const match = matcher.matchingFilter([rec.oldPath, rec.path], state.filters);
     const pattern = match ? match.pattern : null;
@@ -236,16 +276,17 @@
       state.summaryDirty = true;
       // The block also knows the old path of a rename; the tree entry only
       // knows the new one, so push the block's verdict to it.
-      const li = block.id && document.getElementById(SELECTORS.treeIdPrefix + block.id);
-      if (li) evaluateTreeFile(li, true);
+      let li = block.id && document.getElementById(SELECTORS.treeIdPrefix + block.id);
+      if (!li) li = document.getElementById(rec.path); // React layout: li id is the path
+      if (li && li.matches(SELECTORS.treeFile)) evaluateTreeFile(li, true);
     }
     return rec;
   }
 
   /** The pattern hiding a tree entry: its file block's verdict if loaded, else by path. */
   function patternForTreeEntry(rec) {
-    const block = document.getElementById(rec.key);
-    if (block && block.matches(SELECTORS.diffFile)) {
+    const block = rec.key.startsWith('path:') ? blocksByPath.get(rec.path) : document.getElementById(rec.key);
+    if (block && block.isConnected && block.matches(SELECTORS.diffFile)) {
       const diffRec = evaluateDiffFile(block);
       if (diffRec) return diffRec.pattern;
     }
@@ -258,12 +299,12 @@
     if (rec && rec.version === state.version && !force) return rec;
     if (!rec) {
       const textEl = li.querySelector(SELECTORS.treeFilePathText);
-      const path = textEl ? textEl.textContent.trim() : '';
+      const path = textEl ? textEl.textContent.trim() : li.id || ''; // React layout: id is the path
       if (!path) return null;
       const prefix = SELECTORS.treeIdPrefix;
       rec = {
         kind: 'tree',
-        key: li.id && li.id.startsWith(prefix) ? li.id.slice(prefix.length) : `path:${path}`,
+        key: textEl && li.id && li.id.startsWith(prefix) ? li.id.slice(prefix.length) : `path:${path}`,
         path,
         oldPath: null,
         stats: null,
@@ -300,6 +341,8 @@
       while (dir && !seen.has(dir)) {
         seen.add(dir);
         if (dir.querySelector(visibleFile)) break;
+        // React tree doesn't render a collapsed folder's children: it may hold visible files.
+        if (dir.querySelector('li[role="treeitem"][aria-expanded="false"]')) break;
         dir.setAttribute(ATTR_EMPTY, '');
         state.emptyFolders.add(dir);
         dir = dir.parentElement && dir.parentElement.closest(SELECTORS.treeDir);
@@ -642,6 +685,7 @@
     for (const el of state.emptyFolders) el.removeAttribute(ATTR_EMPTY);
     state.emptyFolders.clear();
     records.clear();
+    blocksByPath.clear();
     removeBanner();
     setRevealed(false);
     state.expanded = false;
