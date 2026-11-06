@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "PR Files Filter",
+  "version": "0.1.0",
+  "description": "Hide files like *.spec.ts and *.snap on GitHub's pull request Files changed tab. A banner always tells you what is hidden.",
+  "minimum_chrome_version": "105",
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["src/matcher.js", "src/storage.js", "src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_title": "PR Files Filter",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>PR Files Filter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1>PR Files Filter</h1>
+      <label class="switch master" title="Turn all filtering on or off. Your filter list is kept.">
+        <input type="checkbox" id="master" role="switch" aria-label="Enable filtering" />
+        <span class="track" aria-hidden="true"></span>
+        <span class="switch-label" id="master-label">On</span>
+      </label>
+    </header>
+
+    <p id="tab-status" class="muted small" aria-live="polite"></p>
+
+    <ul id="filters" class="filters" aria-label="Filters"></ul>
+    <p id="empty" class="muted empty" hidden>No filters. Add one below, or reset to defaults.</p>
+
+    <form id="add-form" class="add" autocomplete="off" novalidate>
+      <input
+        id="add-input"
+        type="text"
+        placeholder="e.g. *.test.tsx or src/generated/**"
+        spellcheck="false"
+        autocapitalize="off"
+        aria-label="New filter pattern"
+        aria-describedby="add-error"
+      />
+      <button type="submit" class="primary">Add</button>
+    </form>
+    <p id="add-error" class="error" role="alert" hidden></p>
+
+    <footer class="foot">
+      <button type="button" id="reset" class="link">Reset to defaults</button>
+      <button type="button" id="toggle-io" class="link" aria-expanded="false" aria-controls="io">Export / import</button>
+    </footer>
+
+    <section id="io" class="io" hidden>
+      <textarea id="io-text" rows="6" spellcheck="false" aria-label="Filters as JSON" placeholder='{"filters":[{"pattern":"*.snap","enabled":true}]}'></textarea>
+      <div class="io-buttons">
+        <button type="button" id="export">Export (copy)</button>
+        <button type="button" id="import">Import (merge)</button>
+      </div>
+      <p id="io-msg" class="small" role="status" hidden></p>
+    </section>
+
+    <p id="note" class="muted small note" role="status" hidden></p>
+
+    <script src="../src/matcher.js"></script>
+    <script src="../src/storage.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

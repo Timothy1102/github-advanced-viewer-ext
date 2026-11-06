@@ -1,0 +1,128 @@
+/*
+ * PR Files Filter - page styles (injected on https://github.com/*).
+ *
+ * Hiding is purely CSS-driven: content.js only sets data-pff-hidden /
+ * data-pff-empty on GitHub's own nodes. "Show" sets data-pff-revealed on
+ * <html>, which switches the rules below off in one step.
+ */
+
+html:not([data-pff-revealed]) [data-pff-hidden],
+html:not([data-pff-revealed]) [data-pff-empty] {
+  display: none !important;
+}
+
+/* While revealed, keep filtered files recognisable so nothing is mistaken for normal review content. */
+html[data-pff-revealed] div.file[data-pff-hidden] {
+  outline: 2px dashed var(--fgColor-attention, #9a6700);
+  outline-offset: -2px;
+}
+html[data-pff-revealed] li[data-pff-hidden] {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+/* --- banner ------------------------------------------------------------------ */
+/* GitHub's own theme variables first (they follow GitHub's light/dark mode),
+   hard-coded fallbacks second. The prefers-color-scheme block only changes the
+   fallbacks, for the case where the variables don't exist. */
+.pff-banner {
+  --pff-fg: var(--fgColor-muted, #59636e);
+  --pff-strong: var(--fgColor-default, #1f2328);
+  --pff-bg: var(--bgColor-muted, #f6f8fa);
+  --pff-border: var(--borderColor-default, #d1d9e0);
+  --pff-accent: var(--fgColor-accent, #0969da);
+  --pff-btn-bg: var(--bgColor-default, #ffffff);
+
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  color: var(--pff-fg);
+  background: var(--pff-bg);
+  border: 1px solid var(--pff-border);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pff-banner {
+    --pff-fg: var(--fgColor-muted, #9198a1);
+    --pff-strong: var(--fgColor-default, #f0f6fc);
+    --pff-bg: var(--bgColor-muted, #151b23);
+    --pff-border: var(--borderColor-default, #3d444d);
+    --pff-accent: var(--fgColor-accent, #4493f8);
+    --pff-btn-bg: var(--bgColor-default, #0d1117);
+  }
+}
+
+.pff-banner [hidden] {
+  display: none !important;
+}
+
+.pff-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pff-icon {
+  flex: none;
+}
+
+.pff-msg {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pff-msg strong {
+  color: var(--pff-strong);
+  font-weight: 600;
+}
+
+.pff-btn {
+  flex: none;
+  padding: 0 8px;
+  color: var(--pff-strong);
+  background: var(--pff-btn-bg);
+  border: 1px solid var(--pff-border);
+  border-radius: 6px;
+  font: inherit;
+  line-height: 20px;
+  cursor: pointer;
+}
+.pff-btn:hover {
+  border-color: var(--pff-accent);
+}
+.pff-btn:focus-visible {
+  outline: 2px solid var(--pff-accent);
+  outline-offset: 1px;
+}
+.pff-btn-quiet {
+  color: var(--pff-fg);
+  background: transparent;
+  border-color: transparent;
+}
+.pff-btn-quiet:hover {
+  color: var(--pff-strong);
+  border-color: var(--pff-border);
+}
+
+.pff-list {
+  max-height: 240px;
+  margin: 8px 0 0;
+  padding: 6px 0 0;
+  overflow: auto;
+  list-style: none;
+  border-top: 1px solid var(--pff-border);
+}
+.pff-list li {
+  padding: 1px 0;
+  overflow-wrap: anywhere;
+}
+.pff-list code {
+  color: var(--pff-strong);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.pff-why {
+  color: var(--pff-fg);
+}
