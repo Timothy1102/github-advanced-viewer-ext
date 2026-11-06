@@ -1,6 +1,6 @@
 # PR Files Filter
 
-A Chrome extension (Manifest V3) that hides files on GitHub's pull request **Files changed** tab based on filename filters you control. By default it hides `*.spec.ts` and `*.snap`.
+A Chrome extension (Manifest V3) that hides files on GitHub's pull request **Files changed** tab based on filename filters you control. It is meant for reviewing AI-generated PRs, where much of the diff is noise: by default it hides tests, snapshots, Storybook stories, lockfiles, and generated/build output (full list in `DEFAULT_PATTERNS` in `src/storage.js`; edit it in the popup).
 
 Hiding is never silent: a banner at the top of the diff area always says how many files are hidden, lets you list them, and lets you reveal them with one click.
 
@@ -14,7 +14,7 @@ Hiding is never silent: a banner at the top of the diff area always says how man
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and select this folder (the one containing `manifest.json`).
-4. Open any pull request's **Files changed** tab. Files ending in `.spec.ts` / `.snap` are hidden and a banner appears.
+4. Open any pull request's **Files changed** tab. Noise files (tests, snapshots, lockfiles, ...) are hidden and a banner appears.
 
 After editing the source, click the reload icon on the extension's card in `chrome://extensions`, then reload the GitHub tab.
 
@@ -35,7 +35,7 @@ After editing the source, click the reload icon on the extension's card in `chro
 - Master switch: turns all filtering off without losing your list.
 - Each filter has an on/off toggle, the pattern, an edit button (or click the pattern; **Enter** saves, **Esc** cancels) and a delete button.
 - Type a pattern and press **Enter** or **Add**. Patterns are trimmed; empty, duplicate, and invalid patterns are rejected with an inline message.
-- **Reset to defaults** (click twice to confirm) restores `*.spec.ts` and `*.snap`. It leaves the master switch alone.
+- **Reset to defaults** (click twice to confirm) restores the default noise filters (also how existing installs pick up newly added defaults). It leaves the master switch alone.
 - **Export / import** copies your filters as JSON, or merges pasted JSON into your list (duplicates and invalid patterns are skipped).
 - The line under the title shows how many files are hidden in the active tab, when that tab is a PR files page.
 

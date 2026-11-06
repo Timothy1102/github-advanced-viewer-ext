@@ -19,22 +19,32 @@ function fakeArea(initial = {}, { failSet } = {}) {
 }
 
 const patterns = (s) => s.filters.map((f) => f.pattern);
+const DEFAULTS = S.DEFAULT_FILTERS.map((f) => f.pattern);
+const byId = (s, id) => s.filters.find((f) => f.id === id);
 
-test('defaults: *.spec.ts and *.snap, both enabled, master on', () => {
+test('defaults: noise filters (tests, snapshots, lockfiles, generated), all enabled, master on', () => {
   const d = S.defaultSettings();
   assert.equal(d.version, 1);
   assert.equal(d.enabled, true);
-  assert.deepEqual(d.filters.map((f) => [f.pattern, f.enabled]), [['*.spec.ts', true], ['*.snap', true]]);
+  assert.ok(d.filters.length > 20);
+  assert.ok(d.filters.every((f) => f.enabled));
+  for (const p of ['*.spec.ts', '*.snap', '*.test.tsx', '__snapshots__/', 'package-lock.json', 'yarn.lock', '*.min.js']) {
+    assert.ok(DEFAULTS.includes(p), p);
+  }
+  assert.equal(new Set(d.filters.map((f) => f.id)).size, d.filters.length, 'ids are unique');
+  assert.equal(new Set(DEFAULTS).size, DEFAULTS.length, 'patterns are unique');
+  const matcher = require('../src/matcher.js');
+  for (const p of DEFAULTS) assert.equal(matcher.validatePattern(p).ok, true, p);
   d.filters.push({ id: 'x', pattern: 'y', enabled: true }); // mutating a copy...
-  assert.equal(S.defaultSettings().filters.length, 2); // ...never affects the next one
+  assert.equal(S.defaultSettings().filters.length, DEFAULTS.length); // ...never affects the next one
 });
 
 test('normalize: missing / corrupt storage falls back to defaults', () => {
   for (const bad of [undefined, null, 'oops', 42, [], true]) {
-    assert.deepEqual(patterns(S.normalize(bad)), ['*.spec.ts', '*.snap']);
+    assert.deepEqual(patterns(S.normalize(bad)), DEFAULTS);
   }
-  assert.deepEqual(patterns(S.normalize({ enabled: true })), ['*.spec.ts', '*.snap']); // no filters key
-  assert.deepEqual(patterns(S.normalize({ filters: 'nope' })), ['*.spec.ts', '*.snap']);
+  assert.deepEqual(patterns(S.normalize({ enabled: true })), DEFAULTS); // no filters key
+  assert.deepEqual(patterns(S.normalize({ filters: 'nope' })), DEFAULTS);
 });
 
 test('normalize: an empty filter list is respected (deleted defaults stay deleted)', () => {
@@ -66,17 +76,17 @@ test('normalize: repairs bad entries, drops duplicates, keeps invalid-syntax pat
 });
 
 test('load: missing, corrupt, or failing storage gives defaults and never rejects', async () => {
-  assert.deepEqual(patterns(await S.load(fakeArea())), ['*.spec.ts', '*.snap']);
-  assert.deepEqual(patterns(await S.load(fakeArea({ settings: 'garbage' }))), ['*.spec.ts', '*.snap']);
+  assert.deepEqual(patterns(await S.load(fakeArea())), DEFAULTS);
+  assert.deepEqual(patterns(await S.load(fakeArea({ settings: 'garbage' }))), DEFAULTS);
   const throwing = { get: async () => { throw new Error('boom'); } };
-  assert.deepEqual(patterns(await S.load(throwing)), ['*.spec.ts', '*.snap']);
-  assert.deepEqual(patterns(await S.load({})), ['*.spec.ts', '*.snap']); // no get() at all
+  assert.deepEqual(patterns(await S.load(throwing)), DEFAULTS);
+  assert.deepEqual(patterns(await S.load({})), DEFAULTS); // no get() at all
 });
 
 test('ensureSeeded: seeds when empty, never overwrites existing settings', async () => {
   const empty = fakeArea();
   assert.equal(await S.ensureSeeded(empty), true);
-  assert.deepEqual(patterns(empty.data.settings), ['*.spec.ts', '*.snap']);
+  assert.deepEqual(patterns(empty.data.settings), DEFAULTS);
 
   const custom = { version: 1, enabled: false, filters: [{ id: 'k', pattern: 'only-mine', enabled: true }] };
   const existing = fakeArea({ settings: custom });
@@ -94,8 +104,8 @@ test('addFilter: trims, rejects empty / duplicate / invalid, appends enabled', (
   assert.equal(ok.ok, true);
   assert.equal(ok.filter.pattern, '**/__snapshots__/**');
   assert.equal(ok.filter.enabled, true);
-  assert.equal(ok.settings.filters.length, 3);
-  assert.equal(s.filters.length, 2, 'input is not mutated');
+  assert.equal(ok.settings.filters.length, DEFAULTS.length + 1);
+  assert.equal(s.filters.length, DEFAULTS.length, 'input is not mutated');
 
   assert.match(S.addFilter(s, '').error, /Enter a pattern/);
   assert.match(S.addFilter(s, '    ').error, /Enter a pattern/);
@@ -108,26 +118,26 @@ test('addFilter: trims, rejects empty / duplicate / invalid, appends enabled', (
 
 test('removeFilter / updateFilter / setMasterEnabled / resetFilters', () => {
   const s = S.defaultSettings();
-  assert.deepEqual(patterns(S.removeFilter(s, 'default-snap').settings), ['*.spec.ts']);
+  assert.deepEqual(patterns(S.removeFilter(s, 'default-snap').settings), DEFAULTS.filter((p) => p !== '*.snap'));
   assert.equal(S.removeFilter(s, 'missing').ok, false);
 
   const toggled = S.updateFilter(s, 'default-snap', { enabled: false }).settings;
-  assert.equal(toggled.filters[1].enabled, false);
-  assert.equal(s.filters[1].enabled, true, 'input is not mutated');
+  assert.equal(byId(toggled, 'default-snap').enabled, false);
+  assert.equal(byId(s, 'default-snap').enabled, true, 'input is not mutated');
 
   const edited = S.updateFilter(s, 'default-snap', { pattern: '  *.snapshot ' });
-  assert.equal(edited.settings.filters[1].pattern, '*.snapshot');
+  assert.equal(byId(edited.settings, 'default-snap').pattern, '*.snapshot');
   assert.equal(S.updateFilter(s, 'default-snap', { pattern: '*.snap' }).ok, true, 'keeping own pattern is fine');
   assert.match(S.updateFilter(s, 'default-snap', { pattern: '*.spec.ts' }).error, /already in the list/);
   assert.match(S.updateFilter(s, 'default-snap', { pattern: '   ' }).error, /Enter a pattern/);
   assert.equal(S.updateFilter(s, 'nope', { enabled: false }).ok, false);
 
   assert.equal(S.setMasterEnabled(s, false).settings.enabled, false);
-  assert.equal(S.setMasterEnabled(s, false).settings.filters.length, 2, 'master off keeps the list');
+  assert.equal(S.setMasterEnabled(s, false).settings.filters.length, DEFAULTS.length, 'master off keeps the list');
 
   const mess = { enabled: false, version: 1, filters: [{ id: 'x', pattern: 'x', enabled: true }] };
   const reset = S.resetFilters(mess).settings;
-  assert.deepEqual(patterns(reset), ['*.spec.ts', '*.snap']);
+  assert.deepEqual(patterns(reset), DEFAULTS);
   assert.equal(reset.enabled, false, 'reset only restores filters; master switch stays as set');
 });
 
@@ -135,12 +145,12 @@ test('update(): read-modify-write against the latest stored value; surfaces save
   const area = fakeArea();
   let res = await S.update((s) => S.addFilter(s, 'a.ts'), area);
   assert.equal(res.ok, true);
-  assert.deepEqual(patterns(area.data.settings), ['*.spec.ts', '*.snap', 'a.ts']);
+  assert.deepEqual(patterns(area.data.settings), [...DEFAULTS, 'a.ts']);
 
   // Another context changed storage between the popup's render and its click.
   area.data.settings.filters.push({ id: 'other', pattern: 'b.ts', enabled: true });
   res = await S.update((s) => S.addFilter(s, 'c.ts'), area);
-  assert.deepEqual(patterns(area.data.settings), ['*.spec.ts', '*.snap', 'a.ts', 'b.ts', 'c.ts']);
+  assert.deepEqual(patterns(area.data.settings), [...DEFAULTS, 'a.ts', 'b.ts', 'c.ts']);
 
   res = await S.update((s) => S.addFilter(s, 'a.ts'), area); // validation error: nothing written
   assert.equal(res.ok, false);
@@ -159,22 +169,20 @@ test('exportJson / mergeImport round trip; import is additive and skips bad entr
   const json = S.exportJson(s);
   const parsed = JSON.parse(json);
   assert.equal(parsed.version, 1);
-  assert.deepEqual(parsed.filters, [
-    { pattern: '*.spec.ts', enabled: true },
-    { pattern: '*.snap', enabled: false },
-  ]);
+  assert.deepEqual(parsed.filters, DEFAULTS.map((pattern) => ({ pattern, enabled: pattern !== '*.snap' })));
 
-  const target = S.removeFilter(S.defaultSettings(), 'default-snap').settings; // only *.spec.ts
+  const target = S.removeFilter(S.defaultSettings(), 'default-snap').settings; // all but *.snap
   const merged = S.mergeImport(target, json);
   assert.equal(merged.ok, true);
   assert.equal(merged.added, 1); // *.snap
-  assert.equal(merged.skipped, 1); // *.spec.ts already present
-  assert.deepEqual(merged.settings.filters.map((f) => [f.pattern, f.enabled]), [['*.spec.ts', true], ['*.snap', false]]);
+  assert.equal(merged.skipped, DEFAULTS.length - 1); // everything else already present
+  assert.equal(merged.settings.filters.length, DEFAULTS.length);
+  assert.equal(merged.settings.filters.find((f) => f.pattern === '*.snap').enabled, false);
 
   const arr = S.mergeImport(S.defaultSettings(), JSON.stringify(['x.ts', '', '!bad', 5, { pattern: 'y.ts', enabled: false }]));
   assert.equal(arr.added, 2);
   assert.equal(arr.skipped, 3);
-  assert.deepEqual(patterns(arr.settings).slice(2), ['x.ts', 'y.ts']);
+  assert.deepEqual(patterns(arr.settings).slice(DEFAULTS.length), ['x.ts', 'y.ts']);
 
   assert.match(S.mergeImport(s, '{nope').error, /not valid JSON/);
   assert.match(S.mergeImport(s, '{"a":1}').error, /Expected/);

@@ -32,10 +32,43 @@
   const SCHEMA_VERSION = 1;
   const STORAGE_KEY = 'settings';
 
-  const DEFAULT_FILTERS = Object.freeze([
-    Object.freeze({ id: 'default-spec-ts', pattern: '*.spec.ts', enabled: true }),
-    Object.freeze({ id: 'default-snap', pattern: '*.snap', enabled: true }),
-  ]);
+  // Default noise filters, grouped by category. Ids are stable (users' stored
+  // filters keep their own ids; these only matter for fresh installs/reset).
+  const DEFAULT_PATTERNS = [
+    // Tests
+    '*.spec.ts', '*.spec.tsx', '*.spec.js', '*.spec.jsx',
+    '*.test.ts', '*.test.tsx', '*.test.js', '*.test.jsx',
+    '__tests__/', '__mocks__/',
+    '*_test.go', '*_test.py', 'test_*.py', '*Test.java', '*Tests.cs',
+    // End-to-end tests
+    'e2e/', 'cypress/', 'playwright-report/',
+    // Snapshots
+    '*.snap', '__snapshots__/',
+    // Storybook
+    '*.stories.*',
+    // Lockfiles
+    'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lock', 'bun.lockb',
+    'Cargo.lock', 'poetry.lock', 'uv.lock', 'Pipfile.lock', 'Gemfile.lock',
+    'composer.lock', 'go.sum',
+    // Generated / build output / vendored
+    '*.min.js', '*.min.css', '*.map', '*.generated.*', '*.pb.go', '*_pb2.py', '*.g.dart',
+    'dist/', 'build/', 'coverage/', 'node_modules/',
+    // Assets, type declarations, changelogs
+    '*.svg', '*.d.ts', 'CHANGELOG.md',
+    // OS junk
+    '.DS_Store',
+  ];
+
+  const DEFAULT_FILTERS = Object.freeze(
+    DEFAULT_PATTERNS.map((pattern) =>
+      Object.freeze({
+        id:
+          pattern === '*.spec.ts' ? 'default-spec-ts' : pattern === '*.snap' ? 'default-snap' : 'default-' + pattern,
+        pattern,
+        enabled: true,
+      })
+    )
+  );
 
   /** A fresh, mutable copy of the default settings. */
   function defaultSettings() {

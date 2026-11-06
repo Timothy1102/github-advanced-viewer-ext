@@ -237,7 +237,7 @@
     disarmReset();
     ui.editingId = null;
     const res = await mutate((s) => storage.resetFilters(s));
-    showNote(res.ok ? 'Filters reset to *.spec.ts and *.snap.' : res.error);
+    showNote(res.ok ? 'Filters reset to the default noise filters.' : res.error);
   });
 
   // --- export / import ---------------------------------------------------------------------------
